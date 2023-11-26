@@ -1,9 +1,11 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
+const fs = require("fs");
 const port = 2004;
 const { F1TelemetryClient, constants } = require("@z0mt3c/f1-telemetry-client");
 const { PACKETS } = constants;
+const telemetryDataFile = "telemetryData.txt";
 
 // var corsOptions = {
 //     origin: "192.168.0.102:2004",
@@ -27,12 +29,23 @@ const carTelemetryListener = (data) => {
     speed: data.m_carTelemetryData[0].m_speed,
     throttle: data.m_carTelemetryData[0].m_throttle,
     brake: data.m_carTelemetryData[0].m_brake,
+    steer: data.m_carTelemetryData[0].m_steer,
+    gear: data.m_carTelemetryData[0].m_gear,
+    engineRPM: data.m_carTelemetryData[0].m_engineRPM,
+    drs: data.m_carTelemetryData[0].m_drs,
   };
   let outdata = {
     inputdata,
     lapData,
   };
-  console.log(outdata);
+  writeToTxt(JSON.stringify(outdata) + "\n", telemetryDataFile);
+  // console.log(outdata);
+};
+
+const writeToTxt = (data, filename) => {
+  fs.appendFile(filename, data, (err) => {
+    if (err) throw err;
+  });
 };
 
 const sessionListener = (data) => {
