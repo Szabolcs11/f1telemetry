@@ -1,0 +1,16 @@
+{
+  "name": "f1temeletry",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@z0mt3c/f1-telemetry-client": "^1.0.4",
+    "cors": "^2.8.5",
+    "express": "^4.18.2"
+  }
+}
