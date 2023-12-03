@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "@z0mt3c/f1-telemetry-client": "^1.0.4",
+    "axios": "^1.6.2",
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "fs": "^0.0.1-security"

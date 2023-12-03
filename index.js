@@ -4,7 +4,11 @@ const cors = require("cors");
 const fs = require("fs");
 const port = 2004;
 const { F1TelemetryClient, constants } = require("@z0mt3c/f1-telemetry-client");
+const { default: axios } = require("axios");
 const { PACKETS } = constants;
+
+const API_URL = "http://213.181.206.157:5004/filee";
+// const API_URL = "http://localhost:2004/filee";
 
 // var corsOptions = {
 //     origin: "192.168.0.102:2004",
@@ -26,14 +30,21 @@ let currentLapTime = null;
 let currentLapNum = 1;
 let currentLapInvalid = 0;
 let listenInputs = 0;
+let ignoreRerq = false;
 
 const lapDataListener = (data) => {
   if (data.m_lapData[0].m_pitStatus == 0 && data.m_lapData[0].m_lapDistance > 0) {
     listenInputs = 1;
     if (currentLapNum + 1 == data.m_lapData[0].m_currentLapNum) {
-      const tempFileName = saveLapDataToTxt(currentLapData, currentLapNum);
-      console.log(tempFileName, "Saved");
-      currentLapData = [];
+      if (!ignoreRerq) {
+        ignoreRerq = true;
+        const tempFileName = saveLapDataToTxt(currentLapData, currentLapNum);
+        console.log("Saved", tempFileName);
+        currentLapData = [];
+        ignoreRerq = false;
+      } else {
+        console.log("Ignoreddata", data.m_lapData[0].m_currentLapNum);
+      }
     }
     currentLapTime = data.m_lapData[0].m_currentLapTime;
     currentLapNum = data.m_lapData[0].m_currentLapNum;
@@ -65,6 +76,16 @@ const carTelemetryListener = (data) => {
   }
 };
 
+async function sendFileToServer(fileName) {
+  const fileContent = fs.readFileSync(fileName, "utf-8");
+  console.log(fileContent);
+  const res = await axios.post(API_URL, { fileContent, fileName }).catch((err) => {
+    console.log(err);
+  });
+  console.log(res.data);
+  return res.data.success;
+}
+
 function saveLapDataToTxt(tempLapData, lapNum) {
   let result = filterArray(tempLapData);
   let fileName = currentSessionUID + "-" + currentUserName + "-" + currentTrackId + "-" + lapNum + ".txt";
@@ -72,6 +93,14 @@ function saveLapDataToTxt(tempLapData, lapNum) {
   fs.appendFile(fileName, dataString, (err) => {
     if (err) throw err;
   });
+  axios
+    .post(API_URL, { fileContent: dataString, fileName })
+    .catch((err) => {
+      console.log(err);
+    })
+    .then((res) => {
+      console.log("Online save", res.data?.success);
+    });
   return fileName;
 }
 
