@@ -1,160 +1,81 @@
 const express = require("express");
 const app = express();
-const cors = require("cors");
-const fs = require("fs");
 const port = 2004;
-const { F1TelemetryClient, constants } = require("@z0mt3c/f1-telemetry-client");
-const { default: axios } = require("axios");
-const { PACKETS } = constants;
+const telemetryController = require("./src/controllers/telemetryController.js");
+const fs = require("fs");
+const path = require("path");
+const cors = require("cors");
 
-const API_URL = "http://213.181.206.157:5004/filee";
-// const API_URL = "http://localhost:2004/filee";
-
-// var corsOptions = {
-//     origin: "192.168.0.102:2004",
-// };
-// app.use(cors(corsOptions));
+app.use(cors());
 
 app.get("/", (req, res) => {
+  res.send("Hello World!");
+});
+
+app.get("/sessions", (req, res) => {
+  //get the sessions from folder names
+  const folderPath = path.join(__dirname, `./files/sessions/`);
+  let sessions = [];
+  fs.readdirSync(folderPath).forEach((file) => {
+    sessions.push(file);
+  });
+  //sort the sessions by date
+  sessions.sort((a, b) => {
+    const aMatch = a.match(/(\d{2}-\d{2}-\d{2})_/);
+    const bMatch = b.match(/(\d{2}-\d{2}-\d{2})_/);
+    const [aDay, aMonth, aYear] = aMatch[1].split("-");
+    const [bDay, bMonth, bYear] = bMatch[1].split("-");
+    return new Date(`20${bYear}, ${bMonth}, ${bDay}`) - new Date(`20${aYear}, ${aMonth}, ${aDay}`);
+  });
   return res.status(200).json({
     success: true,
-    message: "Test!",
+    sessions,
   });
 });
 
-let currentSessionUID = "";
-let currentUserName = "";
-let currentTrackId = "";
-let currentLapData = [];
-let currentLapTime = null;
-let currentLapNum = 1;
-let currentLapInvalid = 0;
-let listenInputs = 0;
-let ignoreRerq = false;
+app.get("/session/:sessionId", (req, res) => {
+  const { sessionId } = req.params;
+  console.log(sessionId);
+  const folderPath = path.join(__dirname, `./files/sessions/${sessionId}/`);
+  let files = [];
+  fs.readdirSync(folderPath).forEach((file) => {
+    files.push(file);
+  });
+  files.sort((a, b) => {
+    const lapNumberA = parseInt(a.split("_")[0], 10);
+    const lapNumberB = parseInt(b.split("_")[0], 10);
+    return lapNumberB - lapNumberA;
+  });
+  return res.status(200).json({
+    success: true,
+    files,
+  });
+});
 
-const lapDataListener = (data) => {
-  if (data.m_lapData[0].m_pitStatus == 0 && data.m_lapData[0].m_lapDistance > 0) {
-    listenInputs = 1;
-    if (currentLapNum + 1 == data.m_lapData[0].m_currentLapNum) {
-      if (!ignoreRerq) {
-        ignoreRerq = true;
-        const tempFileName = saveLapDataToTxt(currentLapData, currentLapNum);
-        console.log("Saved", tempFileName);
-        currentLapData = [];
-        ignoreRerq = false;
-      } else {
-        console.log("Ignoreddata", data.m_lapData[0].m_currentLapNum);
-      }
+app.get("/session/:sessionId/:fileName", (req, res) => {
+  const { sessionId, fileName } = req.params;
+  const filePath = path.join(__dirname, `./files/sessions/${sessionId}/${fileName}`);
+  fs.readFile(filePath, (err, data) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({
+        success: false,
+        error: err,
+      });
     }
-    currentLapTime = data.m_lapData[0].m_currentLapTime;
-    currentLapNum = data.m_lapData[0].m_currentLapNum;
-  } else {
-    currentLapData = [];
-    currentLapNum = 1;
-  }
-  currentLapInvalid = data.m_lapData[0].m_currentLapInvalid;
-};
-
-const carTelemetryListener = (data) => {
-  if (listenInputs) {
-    let inputdata = {
-      speed: data.m_carTelemetryData[0].m_speed,
-      throttle: data.m_carTelemetryData[0].m_throttle,
-      brake: data.m_carTelemetryData[0].m_brake,
-      steer: data.m_carTelemetryData[0].m_steer,
-      gear: data.m_carTelemetryData[0].m_gear,
-      engineRPM: data.m_carTelemetryData[0].m_engineRPM,
-      drs: data.m_carTelemetryData[0].m_drs,
-    };
-    let outdata = {
-      inputdata,
-      currentLapTime,
-      currentLapNum,
-      currentLapInvalid,
-    };
-    currentLapData.push(outdata);
-  }
-};
-
-async function sendFileToServer(fileName) {
-  const fileContent = fs.readFileSync(fileName, "utf-8");
-  console.log(fileContent);
-  const res = await axios.post(API_URL, { fileContent, fileName }).catch((err) => {
-    console.log(err);
-  });
-  console.log(res.data);
-  return res.data.success;
-}
-
-function saveLapDataToTxt(tempLapData, lapNum) {
-  let result = filterArray(tempLapData);
-  let fileName = currentSessionUID + "-" + currentUserName + "-" + currentTrackId + "-" + lapNum + ".txt";
-  const dataString = result.map((e) => JSON.stringify(e)).join("\n");
-  fs.appendFile(fileName, dataString, (err) => {
-    if (err) throw err;
-  });
-  axios
-    .post(API_URL, { fileContent: dataString, fileName })
-    .catch((err) => {
-      console.log(err);
-    })
-    .then((res) => {
-      console.log("Online save", res.data?.success);
+    let result = data
+      .toString()
+      .split("\n")
+      .map((e) => JSON.parse(e));
+    return res.status(200).json({
+      success: true,
+      data: result,
     });
-  return fileName;
-}
-
-function filterArray(arr) {
-  let result = [];
-  for (let i = 0; i < arr.length; i++) {
-    if (i === 0 || arr[i].currentLapTime > arr[i - 1].currentLapTime) {
-      result.push(arr[i]);
-    } else {
-      result = [arr[i]]; // Start a new sequence if the condition is not met
-    }
-  }
-  return result;
-}
-
-const sessionListener = (data) => {
-  currentTrackId = data.m_trackId;
-  currentSessionUID = data.m_header.m_sessionUID;
-  if (currentSessionUID != data.m_header.m_sessionUID) {
-    currentLapData = [];
-    currentLapNum = 1;
-  }
-};
-
-const participantsListener = (data) => {
-  currentUserName = data.m_participants[0].m_name;
-};
-
-const client = new F1TelemetryClient({
-  port: 20777,
-  forwardAddresses: [{ port: 2004, ip: "192.168.0.102" }],
+  });
 });
-client.on(PACKETS.lapData, lapDataListener);
-client.on(PACKETS.carTelemetry, carTelemetryListener);
-client.on(PACKETS.participants, participantsListener);
-client.on(PACKETS.session, sessionListener);
 
-// client.on(PACKETS.event, console.log);
-// client.on(PACKETS.motion, console.log);
-// client.on(PACKETS.carSetups, console.log);
-// client.on(PACKETS.carStatus, console.log);
-// client.on(PACKETS.finalClassification, console.log);
-// client.on(PACKETS.lobbyInfo, console.log);
-// client.on(PACKETS.carDamage, console.log);
-// client.on(PACKETS.sessionHistory, console.log);
-// client.on(PACKETS.tyreSets, console.log);
-// client.on(PACKETS.motionEx, console.log);
+app.listen(port, () => {
+  console.log("Server listening on port:", port);
+});
 
-// to start listening:
-client.start();
-
-// and when you want to stop:
-// client.stop()
-
-// app.listen(port, () => {
-//     console.log('App Listen on Port: ', port)
-// })
+telemetryController.setupTelemetryListener();
