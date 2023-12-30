@@ -1,68 +1,65 @@
 const fs = require("fs");
 const { F1TelemetryClient, constants } = require("@z0mt3c/f1-telemetry-client");
 const path = require("path");
-const { filterArray, getTrackById, getDateForFileName, getSessionTypeFromId, saveLapDataToTxt } = require("./utils");
+const { saveLapDataToTxt } = require("./utils");
 
 const { PACKETS } = constants;
 
 let currentSessionUID = "";
-let currentUserName = "";
 let currentTrackId = "";
-let currentLapData = [];
 let currentLapTime = null;
 let currentLapNum = 1;
-let currentLapInvalid = 0;
-let listenInputs = 0;
-let ignoreRerq = false;
 let currentSessionType = "";
 
+let everyLapData = new Map();
+
 const lapDataListener = async (data) => {
-  if (data.m_lapData[0].m_pitStatus == 0 && data.m_lapData[0].m_lapDistance > 0) {
-    listenInputs = 1;
-    if (currentLapNum + 1 == data.m_lapData[0].m_currentLapNum) {
-      if (!ignoreRerq) {
-        ignoreRerq = true;
-        const tempFileName = await saveLapDataToTxt(
-          currentLapData,
-          currentLapNum,
-          currentTrackId,
-          currentSessionUID,
-          currentSessionType
-        );
-        console.log("Saved", tempFileName);
-        currentLapData = [];
-        ignoreRerq = false;
-      } else {
-        console.log("Ignoreddata", data.m_lapData[0].m_currentLapNum);
-      }
+  if (!everyLapData.has(data.m_lapData[0].m_currentLapNum)) {
+    let insertdata = {
+      currentLapInvalid: data.m_lapData[0].m_currentLapInvalid,
+      Datas: [],
+    };
+    everyLapData.set(data.m_lapData[0].m_currentLapNum, insertdata);
+    if (data.m_lapData[0].m_currentLapNum != 1 && everyLapData.size > 1) {
+      const tempFileName = await saveLapDataToTxt(
+        everyLapData.get(data.m_lapData[0].m_currentLapNum - 1),
+        currentLapNum,
+        currentTrackId,
+        currentSessionUID,
+        currentSessionType
+      );
+      console.log("Saved", tempFileName);
     }
-    currentLapTime = data.m_lapData[0].m_currentLapTime;
-    currentLapNum = data.m_lapData[0].m_currentLapNum;
   } else {
-    currentLapData = [];
-    currentLapNum = 1;
+    let tempdata = everyLapData.get(data.m_lapData[0].m_currentLapNum);
+    tempdata.currentLapInvalid = data.m_lapData[0].m_currentLapInvalid;
+    everyLapData.set(data.m_lapData[0].m_currentLapNum, tempdata);
   }
-  currentLapInvalid = data.m_lapData[0].m_currentLapInvalid;
+  currentLapNum = data.m_lapData[0].m_currentLapNum;
+  currentLapTime = data.m_lapData[0].m_currentLapTimeInMS / 1000;
 };
 
 const carTelemetryListener = (data) => {
-  if (listenInputs) {
-    let inputdata = {
-      speed: data.m_carTelemetryData[0].m_speed,
-      throttle: data.m_carTelemetryData[0].m_throttle,
-      brake: data.m_carTelemetryData[0].m_brake,
-      steer: data.m_carTelemetryData[0].m_steer * -1,
-      gear: data.m_carTelemetryData[0].m_gear,
-      engineRPM: data.m_carTelemetryData[0].m_engineRPM,
-      drs: data.m_carTelemetryData[0].m_drs,
-    };
-    let outdata = {
-      inputdata,
-      currentLapTime,
-      currentLapNum,
-      currentLapInvalid,
-    };
-    currentLapData.push(outdata);
+  let inputdata = {
+    speed: data.m_carTelemetryData[0].m_speed,
+    throttle: data.m_carTelemetryData[0].m_throttle,
+    brake: data.m_carTelemetryData[0].m_brake,
+    steer: data.m_carTelemetryData[0].m_steer * -1,
+    gear: data.m_carTelemetryData[0].m_gear,
+    engineRPM: data.m_carTelemetryData[0].m_engineRPM,
+    drs: data.m_carTelemetryData[0].m_drs,
+  };
+  let outdata = {
+    inputdata,
+    currentLapTime,
+  };
+
+  if (everyLapData.has(currentLapNum)) {
+    let tempdata = everyLapData.get(currentLapNum);
+    tempdata.Datas.push(outdata);
+    everyLapData.set(currentLapNum, tempdata);
+  } else {
+    console.log("Lap not exist");
   }
 };
 

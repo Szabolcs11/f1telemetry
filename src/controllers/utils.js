@@ -3,11 +3,11 @@ const fs = require("fs");
 
 function filterArray(arr) {
   let result = [];
-  for (let i = 0; i < arr.length; i++) {
-    if (i === 0 || arr[i].currentLapTime > arr[i - 1].currentLapTime) {
-      result.push(arr[i]);
+  for (let i = 0; i < arr.Datas.length; i++) {
+    if (i === 0 || arr.Datas[i].currentLapTime > arr.Datas[i - 1].currentLapTime) {
+      result.push(arr.Datas[i]);
     } else {
-      result = [arr[i]];
+      result = [arr.Datas[i]];
     }
   }
   return result;
@@ -19,9 +19,8 @@ function saveLapDataToTxt(tempLapData, lapNum, currentTrackId, currentSessionUID
     return;
   }
   const dataString = result.map((e) => JSON.stringify(e)).join("\n");
-
-  const currentTrack = getTrackById(currentTrackId);
-  const lapTime = Math.round(result[result.length - 1].currentLapTime * 1000) / 1000;
+  const currentTrack = getTrackNameById(currentTrackId);
+  const lapTime = result[result.length - 1].currentLapTime;
   let fileName = lapNum + "_" + lapTime + ".txt";
   const folderName =
     getSessionTypeFromId(currentSessionType) +
@@ -36,7 +35,6 @@ function saveLapDataToTxt(tempLapData, lapNum, currentTrackId, currentSessionUID
   let folderPath = path.join(__dirname, `./../../files/sessions/${folderName}`);
 
   const foldersCounter = foldersExists(folderNameWithoutSession);
-  console.log(foldersCounter);
   if (foldersCounter > 0) {
     folderPath = `${folderPath}_${foldersCounter}`;
     if (!fs.existsSync(folderPath)) {
@@ -61,65 +59,116 @@ function saveLapDataToTxt(tempLapData, lapNum, currentTrackId, currentSessionUID
 function foldersExists(folderNameWithoutId) {
   const folderPath = path.join(__dirname, `./../../files/sessions/`);
   const matchingFolders = fs.readdirSync(folderPath).filter((folder) => folder.startsWith(folderNameWithoutId));
-  console.log(matchingFolders.length);
   return matchingFolders.length;
 }
 
-function getTrackById(id) {
-  switch (id) {
+function getTrackNameById(trackNumber) {
+  let trackName;
+  switch (trackNumber) {
     case 0:
-      return "Melbourne";
+      trackName = "Melbourne";
+      break;
     case 1:
-      return "Paul_Ricard";
+      trackName = "Paul Ricard";
+      break;
     case 2:
-      return "Shanghai";
+      trackName = "Shanghai";
+      break;
     case 3:
-      return "Sakhir_(Bahrain)";
+      trackName = "Sakhir (Bahrain)";
+      break;
     case 4:
-      return "Catalunya";
+      trackName = "Catalunya";
+      break;
     case 5:
-      return "Monaco";
+      trackName = "Monaco";
+      break;
     case 6:
-      return "Montreal";
+      trackName = "Montreal";
+      break;
     case 7:
-      return "Silverstone";
+      trackName = "Silverstone";
+      break;
     case 8:
-      return "Hockenheim";
+      trackName = "Hockenheim";
+      break;
     case 9:
-      return "Hungaroring";
+      trackName = "Hungaroring";
+      break;
     case 10:
-      return "Spa";
+      trackName = "Spa";
+      break;
     case 11:
-      return "Monza";
+      trackName = "Monza";
+      break;
     case 12:
-      return "Singapore";
+      trackName = "Singapore";
+      break;
     case 13:
-      return "Suzuka";
+      trackName = "Suzuka";
+      break;
     case 14:
-      return "Abu_Dhabi";
+      trackName = "Abu Dhabi";
+      break;
     case 15:
-      return "Texas";
+      trackName = "Texas";
+      break;
     case 16:
-      return "Brazil";
+      trackName = "Brazil";
+      break;
     case 17:
-      return "Austria";
+      trackName = "Austria";
+      break;
     case 18:
-      return "Sochi";
+      trackName = "Sochi";
+      break;
     case 19:
-      return "Mexico";
+      trackName = "Mexico";
+      break;
     case 20:
-      return "Baku_(Azerbaijan)";
+      trackName = "Baku (Azerbaijan)";
+      break;
     case 21:
-      return "Sakhir_Short";
+      trackName = "Sakhir Short";
+      break;
     case 22:
-      return "Silverstone_Short";
+      trackName = "Silverstone Short";
+      break;
     case 23:
-      return "Texas_Short";
+      trackName = "Texas Short";
+      break;
     case 24:
-      return "Suzuka_Short";
+      trackName = "Suzuka Short";
+      break;
+    case 25:
+      trackName = "Hanoi";
+      break;
+    case 26:
+      trackName = "Zandvoort";
+      break;
+    case 27:
+      trackName = "Imola";
+      break;
+    case 28:
+      trackName = "Portimão";
+      break;
+    case 29:
+      trackName = "Jeddah";
+      break;
+    case 30:
+      trackName = "Miami";
+      break;
+    case 31:
+      trackName = "Las Vegas";
+      break;
+    case 32:
+      trackName = "Losail";
+      break;
     default:
-      return "Unknown";
+      trackName = "Unknown Track";
+      break;
   }
+  return trackName;
 }
 
 // Return a date format like: YY_MM_DD
@@ -133,29 +182,35 @@ function getDateForFileName() {
 
 function getSessionTypeFromId(id) {
   switch (id) {
+    case 0:
+      return "Unknown";
     case 5:
-      return "Q";
+      return "Q1";
     case 6:
-      return "Q";
+      return "Q2";
     case 7:
-      return "Q";
+      return "Q3";
     case 8:
-      return "Q";
+      return "SQ";
     case 9:
-      return "Q";
+      return "OSQ";
     case 10:
       return "R";
+    case 11:
+      return "R2";
     case 12:
+      return "R3";
+    case 13:
       return "TT";
     default:
-      return "unknown";
+      return "Invalid";
   }
 }
 
 module.exports = {
   filterArray,
   saveLapDataToTxt,
-  getTrackById,
+  getTrackNameById,
   getDateForFileName,
   getSessionTypeFromId,
 };
