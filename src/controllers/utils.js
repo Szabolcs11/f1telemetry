@@ -40,20 +40,14 @@ function saveLapDataToTxt(tempLapData, lapNum, currentTrackId, currentSessionUID
   if (foldersCounter > 0) {
     folderPath = `${folderPath}_${foldersCounter}`;
     if (!fs.existsSync(folderPath)) {
-      console.log("if if");
       folderPath = path.join(__dirname, `./../../files/sessions/${folderName}_${foldersCounter + 1}`);
       fileName = lapNum + "_" + lapTime + ".txt";
       fs.mkdirSync(folderPath, { recursive: true });
-    } else {
-      console.log("if else");
     }
   } else {
     if (!fs.existsSync(folderPath)) {
-      console.log("else if");
       folderPath = `${folderPath}_1`;
       fs.mkdirSync(folderPath, { recursive: true });
-    } else {
-      console.log("else else");
     }
   }
 
@@ -63,12 +57,6 @@ function saveLapDataToTxt(tempLapData, lapNum, currentTrackId, currentSessionUID
   });
   return filePath;
 }
-
-// if (!fs.existsSync(folderPath)) {
-//   folderPath = `${folderPath}_1`;
-//   fs.mkdirSync(folderPath, { recursive: true });
-// } else {
-// }
 
 function foldersExists(folderNameWithoutId) {
   const folderPath = path.join(__dirname, `./../../files/sessions/`);
