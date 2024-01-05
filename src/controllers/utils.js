@@ -13,15 +13,14 @@ function filterArray(arr) {
   return result;
 }
 
-function saveLapDataToTxt(tempLapData, lapNum, currentTrackId, currentSessionUID, currentSessionType) {
+function saveLapDataToTxt(tempLapData, lapNum, currentTrackId, currentSessionUID, currentSessionType, currentLapTime) {
   let result = filterArray(tempLapData);
   if (!result.length) {
     return;
   }
   const dataString = result.map((e) => JSON.stringify(e)).join("\n");
   const currentTrack = getTrackNameById(currentTrackId);
-  const lapTime = result[result.length - 1].currentLapTime;
-  let fileName = lapNum + "_" + lapTime + ".txt";
+  let fileName = lapNum + "_" + currentLapTime + ".txt";
   const folderName =
     getSessionTypeFromId(currentSessionType) +
     "_" +
@@ -39,7 +38,7 @@ function saveLapDataToTxt(tempLapData, lapNum, currentTrackId, currentSessionUID
     folderPath = `${folderPath}_${foldersCounter}`;
     if (!fs.existsSync(folderPath)) {
       folderPath = path.join(__dirname, `./../../files/sessions/${folderName}_${foldersCounter + 1}`);
-      fileName = lapNum + "_" + lapTime + ".txt";
+      fileName = lapNum + "_" + currentLapTime + ".txt";
       fs.mkdirSync(folderPath, { recursive: true });
     }
   } else {
@@ -69,13 +68,13 @@ function getTrackNameById(trackNumber) {
       trackName = "Melbourne";
       break;
     case 1:
-      trackName = "Paul Ricard";
+      trackName = "Paul_Ricard";
       break;
     case 2:
       trackName = "Shanghai";
       break;
     case 3:
-      trackName = "Sakhir (Bahrain)";
+      trackName = "Bahrain";
       break;
     case 4:
       trackName = "Catalunya";
@@ -108,7 +107,7 @@ function getTrackNameById(trackNumber) {
       trackName = "Suzuka";
       break;
     case 14:
-      trackName = "Abu Dhabi";
+      trackName = "Abu_Dhabi";
       break;
     case 15:
       trackName = "Texas";
@@ -126,19 +125,19 @@ function getTrackNameById(trackNumber) {
       trackName = "Mexico";
       break;
     case 20:
-      trackName = "Baku (Azerbaijan)";
+      trackName = "Baku_(Azerbaijan)";
       break;
     case 21:
-      trackName = "Sakhir Short";
+      trackName = "Sakhir_Short";
       break;
     case 22:
-      trackName = "Silverstone Short";
+      trackName = "Silverstone_Short";
       break;
     case 23:
-      trackName = "Texas Short";
+      trackName = "Texas_Short";
       break;
     case 24:
-      trackName = "Suzuka Short";
+      trackName = "Suzuka_Short";
       break;
     case 25:
       trackName = "Hanoi";
@@ -159,13 +158,13 @@ function getTrackNameById(trackNumber) {
       trackName = "Miami";
       break;
     case 31:
-      trackName = "Las Vegas";
+      trackName = "Las_Vegas";
       break;
     case 32:
       trackName = "Losail";
       break;
     default:
-      trackName = "Unknown Track";
+      trackName = "Unknown";
       break;
   }
   return trackName;
