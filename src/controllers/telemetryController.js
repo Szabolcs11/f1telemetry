@@ -9,6 +9,7 @@ let currentLapTime = null;
 let currentLapNum = 1;
 let currentSessionType = "";
 let currentUserIndex = 0;
+let currentLapDistance = 0;
 
 let everyLapData = new Map();
 
@@ -37,6 +38,7 @@ const lapDataListener = async (data) => {
   }
   currentLapNum = data.m_lapData[currentUserIndex].m_currentLapNum;
   currentLapTime = data.m_lapData[currentUserIndex].m_currentLapTimeInMS / 1000;
+  currentLapDistance = data.m_lapData[currentUserIndex].m_lapDistance;
 };
 
 const carTelemetryListener = (data) => {
@@ -48,12 +50,13 @@ const carTelemetryListener = (data) => {
     gear: data.m_carTelemetryData[currentUserIndex].m_gear,
     engineRPM: data.m_carTelemetryData[currentUserIndex].m_engineRPM,
     drs: data.m_carTelemetryData[currentUserIndex].m_drs,
+    engineTemp: data.m_carTelemetryData[currentUserIndex].m_engineTemperature,
   };
   let outdata = {
     inputdata,
     currentLapTime,
+    currentLapDistance,
   };
-
   if (everyLapData.has(currentLapNum)) {
     let tempdata = everyLapData.get(currentLapNum);
     tempdata.Datas.push(outdata);
@@ -84,6 +87,7 @@ const resetVariables = () => {
   currentLapNum = 1;
   currentSessionType = "";
   currentUserIndex = 0;
+  currentLapDistance = 0;
   everyLapData = new Map();
 };
 

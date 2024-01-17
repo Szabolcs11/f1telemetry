@@ -7,7 +7,11 @@ function filterArray(arr) {
     if (i === 0 || arr.Datas[i].currentLapTime > arr.Datas[i - 1].currentLapTime) {
       result.push(arr.Datas[i]);
     } else {
-      result = [arr.Datas[i]];
+      if (arr.Datas[i].currentLapTime == arr.Datas[i - 1].currentLapTime && arr.Datas[i].currentLapTime != 0) {
+        result.push(arr.Datas[i]);
+      } else {
+        result = [arr.Datas[i]];
+      }
     }
   }
   return result;
@@ -50,6 +54,10 @@ function saveLapDataToTxt(tempLapData, lapNum, currentTrackId, currentSessionUID
 
   const filePath = path.join(folderPath, fileName);
   fs.appendFile(filePath, dataString, (err) => {
+    if (err) throw err;
+  });
+  const filePath2 = path.join(folderPath, "all.txt");
+  fs.appendFile(filePath2, JSON.stringify(tempLapData), (err) => {
     if (err) throw err;
   });
   return filePath;
