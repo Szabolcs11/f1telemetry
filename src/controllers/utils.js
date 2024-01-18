@@ -56,10 +56,6 @@ function saveLapDataToTxt(tempLapData, lapNum, currentTrackId, currentSessionUID
   fs.appendFile(filePath, dataString, (err) => {
     if (err) throw err;
   });
-  const filePath2 = path.join(folderPath, "all.txt");
-  fs.appendFile(filePath2, JSON.stringify(tempLapData), (err) => {
-    if (err) throw err;
-  });
   return filePath;
 }
 
