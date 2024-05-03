@@ -1,5 +1,6 @@
 const { F1TelemetryClient, constants } = require("@z0mt3c/f1-telemetry-client");
 const { saveLapDataToTxt } = require("./utils");
+const e = require("cors");
 
 const { PACKETS } = constants;
 
@@ -14,7 +15,8 @@ let currentLapDistance = 0;
 let everyLapData = new Map();
 
 const lapDataListener = async (data) => {
-  if (!everyLapData.has(data.m_lapData[currentUserIndex].m_currentLapNum)) {
+  if (!everyLapData.has(data.m_lapData[currentUserIndex]?.m_currentLapNum)) {
+    // console.log(data.m_lapData[currentUserIndex]);
     let insertdata = {
       currentLapInvalid: data.m_lapData[currentUserIndex].m_currentLapInvalid,
       Datas: [],
@@ -92,7 +94,14 @@ const resetVariables = () => {
 };
 
 const participantsListener = (data) => {
-  let myindex = data.m_participants.findIndex((e) => e.m_aiControlled == 0 && e.m_name != "");
+  let myindex;
+  // let myindex = data.m_participants.findIndex((e) => e.m_aiControlled == 0 && e.m_name != "" && e.m_raceNumber == 73);
+  data.m_participants.forEach((e, i) => {
+    if (myindex) return;
+    if (e.m_aiControlled == 0) {
+      myindex = i;
+    }
+  });
   currentUserIndex = myindex;
 };
 
