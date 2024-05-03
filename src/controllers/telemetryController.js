@@ -1,72 +1,78 @@
-const fs = require("fs");
 const { F1TelemetryClient, constants } = require("@z0mt3c/f1-telemetry-client");
-const path = require("path");
-const { filterArray, getTrackById, getDateForFileName, getSessionTypeFromId, saveLapDataToTxt } = require("./utils");
+const { saveLapDataToTxt } = require("./utils");
+const e = require("cors");
 
 const { PACKETS } = constants;
 
 let currentSessionUID = "";
-let currentUserName = "";
 let currentTrackId = "";
-let currentLapData = [];
 let currentLapTime = null;
 let currentLapNum = 1;
-let currentLapInvalid = 0;
-let listenInputs = 0;
-let ignoreRerq = false;
 let currentSessionType = "";
+let currentUserIndex = 0;
+let currentLapDistance = 0;
+
+let everyLapData = new Map();
 
 const lapDataListener = async (data) => {
-  if (data.m_lapData[0].m_pitStatus == 0 && data.m_lapData[0].m_lapDistance > 0) {
-    listenInputs = 1;
-    if (currentLapNum + 1 == data.m_lapData[0].m_currentLapNum) {
-      if (!ignoreRerq) {
-        ignoreRerq = true;
-        const tempFileName = await saveLapDataToTxt(
-          currentLapData,
-          currentLapNum,
-          currentTrackId,
-          currentSessionUID,
-          currentSessionType
-        );
-        console.log("Saved", tempFileName);
-        currentLapData = [];
-        ignoreRerq = false;
-      } else {
-        console.log("Ignoreddata", data.m_lapData[0].m_currentLapNum);
-      }
+  if (!everyLapData.has(data.m_lapData[currentUserIndex]?.m_currentLapNum)) {
+    // console.log(data.m_lapData[currentUserIndex]);
+    let insertdata = {
+      currentLapInvalid: data.m_lapData[currentUserIndex].m_currentLapInvalid,
+      Datas: [],
+    };
+    everyLapData.set(data.m_lapData[currentUserIndex].m_currentLapNum, insertdata);
+    if (data.m_lapData[currentUserIndex].m_currentLapNum != 1 && everyLapData.size > 1) {
+      const tempFileName = await saveLapDataToTxt(
+        everyLapData.get(data.m_lapData[currentUserIndex].m_currentLapNum - 1),
+        currentLapNum,
+        currentTrackId,
+        currentSessionUID,
+        currentSessionType,
+        data.m_lapData[currentUserIndex].m_lastLapTimeInMS / 1000
+      );
+      console.log("Saved", tempFileName);
     }
-    currentLapTime = data.m_lapData[0].m_currentLapTime;
-    currentLapNum = data.m_lapData[0].m_currentLapNum;
   } else {
-    currentLapData = [];
-    currentLapNum = 1;
+    let tempdata = everyLapData.get(data.m_lapData[currentUserIndex].m_currentLapNum);
+    tempdata.currentLapInvalid = data.m_lapData[currentUserIndex].m_currentLapInvalid;
+    everyLapData.set(data.m_lapData[currentUserIndex].m_currentLapNum, tempdata);
   }
-  currentLapInvalid = data.m_lapData[0].m_currentLapInvalid;
+  currentLapNum = data.m_lapData[currentUserIndex].m_currentLapNum;
+  currentLapTime = data.m_lapData[currentUserIndex].m_currentLapTimeInMS / 1000;
+  currentLapDistance = data.m_lapData[currentUserIndex].m_lapDistance;
 };
 
 const carTelemetryListener = (data) => {
-  if (listenInputs) {
-    let inputdata = {
-      speed: data.m_carTelemetryData[0].m_speed,
-      throttle: data.m_carTelemetryData[0].m_throttle,
-      brake: data.m_carTelemetryData[0].m_brake,
-      steer: data.m_carTelemetryData[0].m_steer * -1,
-      gear: data.m_carTelemetryData[0].m_gear,
-      engineRPM: data.m_carTelemetryData[0].m_engineRPM,
-      drs: data.m_carTelemetryData[0].m_drs,
-    };
-    let outdata = {
-      inputdata,
-      currentLapTime,
-      currentLapNum,
-      currentLapInvalid,
-    };
-    currentLapData.push(outdata);
+  let inputdata = {
+    speed: data.m_carTelemetryData[currentUserIndex].m_speed,
+    throttle: data.m_carTelemetryData[currentUserIndex].m_throttle,
+    brake: data.m_carTelemetryData[currentUserIndex].m_brake,
+    steer: data.m_carTelemetryData[currentUserIndex].m_steer * -1,
+    gear: data.m_carTelemetryData[currentUserIndex].m_gear,
+    engineRPM: data.m_carTelemetryData[currentUserIndex].m_engineRPM,
+    drs: data.m_carTelemetryData[currentUserIndex].m_drs,
+    engineTemp: data.m_carTelemetryData[currentUserIndex].m_engineTemperature,
+  };
+  let outdata = {
+    inputdata,
+    currentLapTime,
+    currentLapDistance,
+  };
+  if (everyLapData.has(currentLapNum)) {
+    let tempdata = everyLapData.get(currentLapNum);
+    tempdata.Datas.push(outdata);
+    everyLapData.set(currentLapNum, tempdata);
+  } else {
+    console.log("Lap not exist");
   }
 };
 
 const sessionListener = (data) => {
+  if (currentSessionUID != data.m_header.m_sessionUID) {
+    // When the session changes, reset variables
+    resetVariables();
+  }
   currentSessionType = data.m_sessionType;
   currentTrackId = data.m_trackId;
   currentSessionUID = data.m_header.m_sessionUID;
@@ -76,10 +82,28 @@ const sessionListener = (data) => {
   }
 };
 
-// const participantsListener = (data) => {
-//   let me = data.m_participants.find((e) => e.m_aiControlled == 0 && e.m_yourTelemetry == 0 && e.m_name != "").m_name;
-//   currentUserName = me;
-// };
+const resetVariables = () => {
+  currentSessionUID = "";
+  currentTrackId = "";
+  currentLapTime = null;
+  currentLapNum = 1;
+  currentSessionType = "";
+  currentUserIndex = 0;
+  currentLapDistance = 0;
+  everyLapData = new Map();
+};
+
+const participantsListener = (data) => {
+  let myindex;
+  // let myindex = data.m_participants.findIndex((e) => e.m_aiControlled == 0 && e.m_name != "" && e.m_raceNumber == 73);
+  data.m_participants.forEach((e, i) => {
+    if (myindex) return;
+    if (e.m_aiControlled == 0) {
+      myindex = i;
+    }
+  });
+  currentUserIndex = myindex;
+};
 
 const finalClassificationListener = (data) => {
   console.log(data.m_classificationData);
@@ -92,7 +116,7 @@ const setupTelemetryListener = () => {
 
   client.on(PACKETS.lapData, lapDataListener);
   client.on(PACKETS.carTelemetry, carTelemetryListener);
-  // client.on(PACKETS.participants, participantsListener);
+  client.on(PACKETS.participants, participantsListener);
   client.on(PACKETS.session, sessionListener);
   client.on(PACKETS.finalClassification, finalClassificationListener);
 

@@ -5,6 +5,7 @@ const telemetryController = require("./src/controllers/telemetryController.js");
 const fs = require("fs");
 const path = require("path");
 const cors = require("cors");
+const { sortSessions, sortByLapNumber } = require("./src/utils.js");
 
 app.use(cors());
 
@@ -13,20 +14,14 @@ app.get("/", (req, res) => {
 });
 
 app.get("/sessions", (req, res) => {
-  //get the sessions from folder names
   const folderPath = path.join(__dirname, `./files/sessions/`);
   let sessions = [];
   fs.readdirSync(folderPath).forEach((file) => {
     sessions.push(file);
   });
-  //sort the sessions by date
-  sessions.sort((a, b) => {
-    const aMatch = a.match(/(\d{2}-\d{2}-\d{2})_/);
-    const bMatch = b.match(/(\d{2}-\d{2}-\d{2})_/);
-    const [aDay, aMonth, aYear] = aMatch[1].split("-");
-    const [bDay, bMonth, bYear] = bMatch[1].split("-");
-    return new Date(`20${bYear}, ${bMonth}, ${bDay}`) - new Date(`20${aYear}, ${aMonth}, ${aDay}`);
-  });
+
+  sessions = sortSessions(sessions);
+
   return res.status(200).json({
     success: true,
     sessions,
@@ -35,17 +30,15 @@ app.get("/sessions", (req, res) => {
 
 app.get("/session/:sessionId", (req, res) => {
   const { sessionId } = req.params;
-  console.log(sessionId);
   const folderPath = path.join(__dirname, `./files/sessions/${sessionId}/`);
+
   let files = [];
   fs.readdirSync(folderPath).forEach((file) => {
     files.push(file);
   });
-  files.sort((a, b) => {
-    const lapNumberA = parseInt(a.split("_")[0], 10);
-    const lapNumberB = parseInt(b.split("_")[0], 10);
-    return lapNumberB - lapNumberA;
-  });
+
+  files = sortByLapNumber(files);
+
   return res.status(200).json({
     success: true,
     files,
