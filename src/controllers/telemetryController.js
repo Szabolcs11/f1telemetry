@@ -8,11 +8,13 @@ let currentSessionUID = "";
 let currentTrackId = "";
 let currentLapTime = null;
 let currentLapNum = 1;
-let currentSessionType = "";
+let currentSessionType = 0;
 let currentUserIndex = 0;
 let currentLapDistance = 0;
 
 let everyLapData = new Map();
+
+let CURRSECTOR = 0;
 
 const lapDataListener = async (data) => {
   if (!everyLapData.has(data.m_lapData[currentUserIndex]?.m_currentLapNum)) {
@@ -29,17 +31,32 @@ const lapDataListener = async (data) => {
         currentTrackId,
         currentSessionUID,
         currentSessionType,
-        data.m_lapData[currentUserIndex].m_lastLapTimeInMS / 1000
+        data.m_lapData[currentUserIndex].m_lastLapTime
+        // data.m_lapData[currentUserIndex].m_lastLapTimeInMS / 1000
       );
+      CURRSECTOR = 0;
       console.log("Saved", tempFileName);
     }
   } else {
     let tempdata = everyLapData.get(data.m_lapData[currentUserIndex].m_currentLapNum);
     tempdata.currentLapInvalid = data.m_lapData[currentUserIndex].m_currentLapInvalid;
+
+    if (data.m_lapData[currentUserIndex].m_sector != CURRSECTOR) {
+      if (CURRSECTOR == 0) {
+        // console.log("EndOfSector1", currentLapDistance);
+        tempdata.EndOfSector1 = currentLapDistance;
+      } else if (CURRSECTOR == 1) {
+        // console.log("EndOfSector2", currentLapDistance);
+        tempdata.EndOfSector2 = currentLapDistance;
+      }
+      CURRSECTOR = data.m_lapData[currentUserIndex].m_sector;
+    }
+
     everyLapData.set(data.m_lapData[currentUserIndex].m_currentLapNum, tempdata);
   }
   currentLapNum = data.m_lapData[currentUserIndex].m_currentLapNum;
-  currentLapTime = data.m_lapData[currentUserIndex].m_currentLapTimeInMS / 1000;
+  currentLapTime = data.m_lapData[currentUserIndex].m_currentLapTime;
+  // currentLapTime = data.m_lapData[currentUserIndex].m_currentLapTimeInMS / 1000;
   currentLapDistance = data.m_lapData[currentUserIndex].m_lapDistance;
 };
 
@@ -83,11 +100,12 @@ const sessionListener = (data) => {
 };
 
 const resetVariables = () => {
+  currentLapData = [];
   currentSessionUID = "";
   currentTrackId = "";
   currentLapTime = null;
   currentLapNum = 1;
-  currentSessionType = "";
+  currentSessionType = 0;
   currentUserIndex = 0;
   currentLapDistance = 0;
   everyLapData = new Map();
@@ -95,18 +113,24 @@ const resetVariables = () => {
 
 const participantsListener = (data) => {
   let myindex;
+  // if (currentSessionType == 18) {
+  //   // Is Time Trial
+  //   myindex = data.m_header.m_playerCarIndex;
+  // }
+  //f12020
+  myindex = data.m_header.m_playerCarIndex;
   // let myindex = data.m_participants.findIndex((e) => e.m_aiControlled == 0 && e.m_name != "" && e.m_raceNumber == 73);
-  data.m_participants.forEach((e, i) => {
-    if (myindex) return;
-    if (e.m_aiControlled == 0) {
-      myindex = i;
-    }
-  });
+  // data.m_participants.forEach((e, i) => {
+  //   if (myindex) return;
+  //   if (e.m_aiControlled == 0) {
+  //     myindex = i;
+  //   }
+  // });
   currentUserIndex = myindex;
 };
 
 const finalClassificationListener = (data) => {
-  console.log(data.m_classificationData);
+  // console.log(data.m_classificationData);
 };
 
 const setupTelemetryListener = () => {

@@ -5,6 +5,11 @@ function filterArray(arr) {
   let result = [];
   for (let i = 0; i < arr.Datas.length; i++) {
     if (i === 0 || arr.Datas[i].currentLapTime > arr.Datas[i - 1].currentLapTime) {
+      if (arr.EndOfSector1 == arr.Datas[i].currentLapDistance) {
+        arr.Datas[i].EndOfSector1 = arr.Datas[i].currentLapDistance;
+      } else if (arr.EndOfSector2 == arr.Datas[i].currentLapDistance) {
+        arr.Datas[i].EndOfSector2 = arr.Datas[i].currentLapDistance;
+      }
       result.push(arr.Datas[i]);
     } else {
       if (arr.Datas[i].currentLapTime == arr.Datas[i - 1].currentLapTime && arr.Datas[i].currentLapTime != 0) {
@@ -24,7 +29,7 @@ function saveLapDataToTxt(tempLapData, lapNum, currentTrackId, currentSessionUID
   }
   const dataString = result.map((e) => JSON.stringify(e)).join("\n");
   const currentTrack = getTrackNameById(currentTrackId);
-  let fileName = lapNum + "_" + currentLapTime + ".txt";
+  let fileName = lapNum + "_" + currentLapTime.toString().match(/^\d+\.\d{0,3}/)[0] + ".txt";
   const folderName =
     getSessionTypeFromId(currentSessionType) +
     "_" +
